@@ -1,0 +1,6 @@
+@Evolution_Api_Gateway_HostAddress = http://localhost:5245
+
+GET {{Evolution_Api_Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
