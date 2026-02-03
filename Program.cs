@@ -13,6 +13,7 @@ builder.Services.Configure<EvolutionConfig>(
 
 // Register your services
 builder.Services.AddScoped<PurchaseOrderService>();
+builder.Services.AddScoped<ViewDataService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

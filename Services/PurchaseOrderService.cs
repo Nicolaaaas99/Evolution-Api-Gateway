@@ -4,6 +4,7 @@ using EvolutionApiGateway.Configuration;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EvolutionApiGateway.Services
 {
@@ -35,7 +36,12 @@ namespace EvolutionApiGateway.Services
             );
         }
 
-        public (string poNumber, string? invoiceNumber) CreatePurchaseOrder(Local.PurchaseOrderRequest request)
+        /// <summary>
+        /// Creates a Purchase Order in Evolution
+        /// </summary>
+        /// <param name="request">Purchase Order details</param>
+        /// <returns>The generated PO Number</returns>
+        public string CreatePurchaseOrder(Local.PurchaseOrderRequest request)
         {
             InitEvolution();
 
@@ -52,12 +58,17 @@ namespace EvolutionApiGateway.Services
                 po.ExternalOrderNo = request.ExternalOrderNumber;
             }
 
-            // CRITICAL: Set the Supplier Invoice Number on the PO object
-            // This must be set BEFORE processing if ProcessImmediately is true
-            if (request.ProcessImmediately && !string.IsNullOrWhiteSpace(request.SupplierInvoiceNumber))
+            // Set Purchase Requisition Number using SetUserField
+            if (!string.IsNullOrWhiteSpace(request.PurchaseRequisitionNumber))
             {
-                po.SupplierInvoiceNo = request.SupplierInvoiceNumber;
+                po.SetUserField("ucIDPOrdPRNr", request.PurchaseRequisitionNumber);
             }
+
+            // Build the Description from the line item codes
+            // Single line:   "Purchase Order - SECURITY"
+            // Multiple lines: "Purchase Order - SECURITY, COKE, PAPER"
+            string lineDescriptions = string.Join(", ", request.Lines.Select(l => l.InventoryItemCode));
+            po.Description = $"Purchase Order - {lineDescriptions}";
 
             // Address constructor (prevents @Address5 SQL error)
             po.DeliverTo = new SDK.Address(request.DeliverToAddress ?? "", "", "", "", "", "");
@@ -76,34 +87,90 @@ namespace EvolutionApiGateway.Services
                 }
 
                 od.Quantity = line.Quantity;
-                
-                // Set ToProcess to match the Quantity so there is data to invoice
                 od.ToProcess = line.Quantity; 
-
                 od.UnitSellingPrice = line.UnitPrice;
                 od.TaxType = new SDK.TaxRate(line.TaxCode);
             }
 
-            // Save the Purchase Order header
+            // Save the Purchase Order
             po.Save();
             
-            string poNumber = po.OrderNo;
-            string? invoiceNumber = null;
+            return po.OrderNo;
+        }
 
-            if (request.ProcessImmediately)
+        /// <summary>
+        /// Processes an existing Purchase Order into a Supplier Invoice
+        /// </summary>
+        public string ProcessPurchaseOrder(string poNumber, string supplierInvoiceNumber)
+        {
+            InitEvolution();
+
+            if (string.IsNullOrWhiteSpace(poNumber))
+                throw new ArgumentException("Purchase Order number cannot be empty", nameof(poNumber));
+            if (string.IsNullOrWhiteSpace(supplierInvoiceNumber))
+                throw new ArgumentException("Supplier Invoice number cannot be empty", nameof(supplierInvoiceNumber));
+
+            SDK.PurchaseOrder po = new SDK.PurchaseOrder(poNumber);
+
+            if (string.IsNullOrEmpty(po.OrderNo))
+                throw new InvalidOperationException($"Purchase Order '{poNumber}' not found");
+
+            po.SupplierInvoiceNo = supplierInvoiceNumber;
+            string invoiceNumber = po.Process(supplierInvoiceNumber);
+
+            if (string.IsNullOrEmpty(invoiceNumber))
+                throw new InvalidOperationException("Failed to process Purchase Order - no invoice number returned");
+
+            return invoiceNumber;
+        }
+
+        /// <summary>
+        /// Gets details of an existing Purchase Order via the SDK
+        /// </summary>
+        public object GetPurchaseOrder(string poNumber)
+        {
+            InitEvolution();
+
+            SDK.PurchaseOrder po = new SDK.PurchaseOrder(poNumber);
+
+            if (string.IsNullOrEmpty(po.OrderNo))
+                throw new InvalidOperationException($"Purchase Order '{poNumber}' not found");
+
+            string? purchaseRequisitionNo = null;
+            try { purchaseRequisitionNo = po.GetUserField("ucIDPOrdPRNr")?.ToString(); }
+            catch { }
+
+            return new
             {
-                // Validate that SupplierInvoiceNumber is provided
-                if (string.IsNullOrWhiteSpace(request.SupplierInvoiceNumber))
+                OrderNo = po.OrderNo,
+                SupplierCode = po.Supplier?.Code,
+                SupplierDescription = po.Supplier?.Description,
+                ExternalOrderNo = po.ExternalOrderNo,
+                PurchaseRequisitionNo = purchaseRequisitionNo,
+                Description = po.Description,
+                InvoiceDate = po.InvoiceDate,
+                TaxMode = po.TaxMode.ToString(),
+                Lines = GetPurchaseOrderLines(po)
+            };
+        }
+
+        private List<object> GetPurchaseOrderLines(SDK.PurchaseOrder po)
+        {
+            var lines = new List<object>();
+            foreach (SDK.OrderDetail detail in po.Detail)
+            {
+                lines.Add(new
                 {
-                    throw new ArgumentException("SupplierInvoiceNumber is required when ProcessImmediately is true");
-                }
-
-                // The supplier invoice number should already be set on po.SupplierInvoiceNo
-                // Now call Process with the same reference
-                invoiceNumber = po.Process(request.SupplierInvoiceNumber);
+                    InventoryItemCode = detail.InventoryItem?.Code,
+                    Description = detail.InventoryItem?.Description,
+                    Quantity = detail.Quantity,
+                    ToProcess = detail.ToProcess,
+                    UnitPrice = detail.UnitSellingPrice,
+                    TaxCode = detail.TaxType?.Code,
+                    WarehouseCode = detail.Warehouse?.Code
+                });
             }
-
-            return (poNumber, invoiceNumber);
+            return lines;
         }
     }
 }
