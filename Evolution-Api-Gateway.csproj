@@ -18,10 +18,12 @@
     <Reference Include="Pastel.Evolution">
       <HintPath>Lib\Pastel.Evolution.dll</HintPath>
       <Private>true</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Pastel.Evolution.Common">
       <HintPath>Lib\Pastel.Evolution.Common.dll</HintPath>
       <Private>true</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
 

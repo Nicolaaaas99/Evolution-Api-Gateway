@@ -58,7 +58,7 @@ namespace EvolutionApiGateway.Controllers
         /// </summary>
         /// <param name="poNumber">The PO number to retrieve</param>
         /// <returns>PO details</returns>
-        [HttpGet("{poNumber}")]
+        [HttpGet("Detail/{poNumber}")]
         public IActionResult Get(string poNumber)
         {
             try
@@ -86,16 +86,22 @@ namespace EvolutionApiGateway.Controllers
 
         /// <summary>
         /// Processes an existing Purchase Order into a Supplier Invoice
+        /// Supports full processing (all remaining quantities) or partial processing (specific quantities per line)
         /// </summary>
         /// <param name="poNumber">The PO number to process</param>
-        /// <param name="request">Supplier Invoice details</param>
+        /// <param name="request">Supplier Invoice details with optional line-level quantities and date</param>
         /// <returns>Generated Supplier Invoice number</returns>
         [HttpPost("{poNumber}/process")]
         public IActionResult Process(string poNumber, [FromBody] ProcessPurchaseOrderRequest request)
         {
             try
             {
-                string invoiceNumber = _poService.ProcessPurchaseOrder(poNumber, request.SupplierInvoiceNumber);
+                string invoiceNumber = _poService.ProcessPurchaseOrder(
+                    poNumber, 
+                    request.SupplierInvoiceNumber,
+                    request.InvoiceDate,
+                    request.LinesToProcess
+                );
                 
                 return Ok(new
                 {

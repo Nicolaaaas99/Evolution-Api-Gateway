@@ -15,18 +15,27 @@ builder.Services.Configure<EvolutionConfig>(
 builder.Services.AddScoped<PurchaseOrderService>();
 builder.Services.AddScoped<ViewDataService>();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseStaticFiles();
+
+// --- SWAGGER CONFIGURATION ---
+// We move this outside the IsDevelopment check for now to ensure IIS displays it.
+// You can move it back once you confirm it works.
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    // The "./v1/swagger.json" is the "magic" fix for IIS blank pages.
+    // It tells the UI to look for the JSON file relative to the current URL.
+    c.SwaggerEndpoint("./v1/swagger.json", "Evolution API Gateway v1");
+});
+// -----------------------------
+
+// Important: If you want to access via http://localhost:8080 (no /swagger), 
+// add: c.RoutePrefix = string.Empty; inside UseSwaggerUI.
 
 app.UseHttpsRedirection();
 

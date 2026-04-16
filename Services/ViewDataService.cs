@@ -44,11 +44,72 @@ namespace EvolutionApiGateway.Services
         }
 
         /// <summary>
-        /// Returns all created POs and their status from [_uvReqCreatedPO]
+        /// Returns all created POs and their status from [_uvReqCreatedPO] view
+        /// Includes: ReqNumber, PONumber, InvoiceNumber, OrderStatus
+        /// Note: A PO with multiple invoices will appear as multiple rows
         /// </summary>
         public List<Dictionary<string, object?>> GetCreatedPurchaseOrders()
         {
-            return ExecuteViewQuery("SELECT * FROM [_uvReqCreatedPO] ORDER BY 1");
+            return ExecuteViewQuery("SELECT * FROM [_uvReqCreatedPO] ORDER BY PONumber DESC");
+        }
+
+        /// <summary>
+        /// Returns all invoices for a specific PO from [_uvReqCreatedPO] view
+        /// Filters by PO number to show all supplier invoices for that PO
+        /// </summary>
+        public List<Dictionary<string, object?>> GetCreatedPurchaseOrdersByPoNumber(string poNumber)
+        {
+            string query = @"
+                SELECT * 
+                FROM [_uvReqCreatedPO] 
+                WHERE PONumber = @PONumber
+                ORDER BY InvoiceNumber
+            ";
+
+            var results = new List<Dictionary<string, object?>>();
+
+            using (var connection = new SqlConnection(GetConnectionString()))
+            {
+                connection.Open();
+
+                using (var command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@PONumber", poNumber);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        // Get column names from the result set
+                        var columns = new string[reader.FieldCount];
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            columns[i] = reader.GetName(i);
+                        }
+
+                        // Read each row
+                        while (reader.Read())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                object? value = reader.GetValue(i);
+                                // Convert DBNull to null
+                                row[columns[i]] = value is DBNull ? null : value;
+                            }
+                            results.Add(row);
+                        }
+                    }
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Returns all active projects from [_uvReqProjects]
+        /// </summary>
+        public List<Dictionary<string, object?>> GetProjects()
+        {
+            return ExecuteViewQuery("SELECT * FROM [_uvReqProjects] ORDER BY ProjectCode");
         }
 
         /// <summary>

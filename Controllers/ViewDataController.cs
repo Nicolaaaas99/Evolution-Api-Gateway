@@ -77,5 +77,48 @@ namespace EvolutionApiGateway.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Returns all invoices for a specific Purchase Order
+        /// </summary>
+        /// <param name="poNumber">The PO number to filter by</param>
+        [HttpGet("CreatedPurchaseOrders/{poNumber}")]
+        public IActionResult GetCreatedPurchaseOrdersByPoNumber(string poNumber)
+        {
+            try
+            {
+                var purchaseOrders = _viewDataService.GetCreatedPurchaseOrdersByPoNumber(poNumber);
+                return Ok(purchaseOrders);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, new
+                {
+                    Error = "Failed to retrieve purchase order invoices",
+                    Detail = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Returns all active projects
+        /// </summary>
+        [HttpGet("Projects")]
+        public IActionResult GetProjects()
+        {
+            try
+            {
+                var projects = _viewDataService.GetProjects();
+                return Ok(projects);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, new
+                {
+                    Error = "Failed to retrieve projects",
+                    Detail = ex.Message
+                });
+            }
+        }
     }
 }
