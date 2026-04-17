@@ -1,6 +1,525 @@
-@Evolution_Api_Gateway_HostAddress = http://localhost:5245
+@host = http://localhost:5245
 
-GET {{Evolution_Api_Gateway_HostAddress}}/weatherforecast/
+#####################################################################
+# VIEW DATA ENDPOINTS - GET requests (read-only, no SDK needed)
+#####################################################################
+
+### ==================== XFUELS ====================
+
+### Get Expense Stock Items - XFUELS
+GET {{host}}/api/XFUELS/ViewData/ExpenseStockItems
 Accept: application/json
+
+###
+
+### Get Trade Suppliers - XFUELS (expects: VENC001 - Vencor Holdings)
+GET {{host}}/api/XFUELS/ViewData/TradeSuppliers
+Accept: application/json
+
+###
+
+### Get Projects - XFUELS (expects: S-BAUMANS, S-BND_RENOVATORS, etc.)
+GET {{host}}/api/XFUELS/ViewData/Projects
+Accept: application/json
+
+###
+
+### Get Created Purchase Orders - XFUELS
+GET {{host}}/api/XFUELS/ViewData/CreatedPurchaseOrders
+Accept: application/json
+
+###
+
+### ==================== TENELLA ====================
+
+### Get Expense Stock Items - TENELLA (expects: INSURANCE, ELECTRICITY, RENT PAID)
+GET {{host}}/api/TENELLA/ViewData/ExpenseStockItems
+Accept: application/json
+
+###
+
+### Get Trade Suppliers - TENELLA (expects: BII001, BLI001, BLU001, BUC001, BUI001)
+GET {{host}}/api/TENELLA/ViewData/TradeSuppliers
+Accept: application/json
+
+###
+
+### Get Projects - TENELLA
+GET {{host}}/api/TENELLA/ViewData/Projects
+Accept: application/json
+
+###
+
+### ==================== LITTLE ====================
+
+### Get Expense Stock Items - LITTLE (expects: TYR-385/65R22.5 LANV, FUEL, PARKING)
+GET {{host}}/api/LITTLE/ViewData/ExpenseStockItems
+Accept: application/json
+
+###
+
+### Get Trade Suppliers - LITTLE (expects: empty - no suppliers)
+GET {{host}}/api/LITTLE/ViewData/TradeSuppliers
+Accept: application/json
+
+###
+
+### Get Projects - LITTLE
+GET {{host}}/api/LITTLE/ViewData/Projects
+Accept: application/json
+
+###
+
+### ==================== JOUXE ====================
+
+### Get Expense Stock Items - JOUXE (expects: SALPAYE, SALCTC)
+GET {{host}}/api/JOUXE/ViewData/ExpenseStockItems
+Accept: application/json
+
+###
+
+### Get Trade Suppliers - JOUXE (expects: GRW001, GSE001, H2O001, HAR001)
+GET {{host}}/api/JOUXE/ViewData/TradeSuppliers
+Accept: application/json
+
+###
+
+### Get Projects - JOUXE
+GET {{host}}/api/JOUXE/ViewData/Projects
+Accept: application/json
+
+###
+
+### ==================== TOBORA ====================
+
+### Get Expense Stock Items - TOBORA (expects: SALCTC, ZZ-ENTERTAINMENT, ZZ-ACCOUNTING FEE, ZZ-ADVERTISING, ZZ-BAD DEBTS)
+GET {{host}}/api/TOBORA/ViewData/ExpenseStockItems
+Accept: application/json
+
+###
+
+### Get Trade Suppliers - TOBORA (expects: ALP001, CASH, CRD001, JAN001, NAG001)
+GET {{host}}/api/TOBORA/ViewData/TradeSuppliers
+Accept: application/json
+
+###
+
+### Get Projects - TOBORA (expects: none)
+GET {{host}}/api/TOBORA/ViewData/Projects
+Accept: application/json
+
+###
+
+### Get Created Purchase Orders - TOBORA
+GET {{host}}/api/TOBORA/ViewData/CreatedPurchaseOrders
+Accept: application/json
+
+###
+
+### ==================== INVALID COMPANY (should return error) ====================
+
+### Invalid company - should list available companies
+GET {{host}}/api/INVALID/ViewData/ExpenseStockItems
+Accept: application/json
+
+###
+
+#####################################################################
+# PURCHASE ORDER ENDPOINTS - Create, Get Detail, Process
+#####################################################################
+
+### ==================== CREATE PO - XFUELS ====================
+### Creates a PO for Vencor Holdings with Advertising & Consulting lines
+### Assigned to different XFUELS projects
+POST {{host}}/api/XFUELS/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "VENC001",
+  "externalOrderNumber": "EXT-XF-001",
+  "purchaseRequisitionNumber": "PR-XF-001",
+  "invoiceDate": "2026-04-16",
+  "deliverToAddress": "123 Main Street, Johannesburg",
+  "invoiceToAddress": "456 Office Park, Sandton",
+  "lines": [
+    {
+      "inventoryItemCode": "ADVERT",
+      "quantity": 1,
+      "unitPrice": 5000.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "S-BAUMANS",
+      "description": "April 2026 Advertising Campaign"
+    },
+    {
+      "inventoryItemCode": "CONSULT",
+      "quantity": 2,
+      "unitPrice": 7500.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "S-DINFUEL",
+      "description": "Consulting - Site Assessment"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - TENELLA ====================
+### Creates a PO for Buco Hardware with Electricity & Rent lines
+POST {{host}}/api/TENELLA/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "BUC001",
+  "externalOrderNumber": "EXT-TN-001",
+  "purchaseRequisitionNumber": "PR-TN-001",
+  "invoiceDate": "2026-04-16",
+  "lines": [
+    {
+      "inventoryItemCode": "ELECTRICITY",
+      "quantity": 1,
+      "unitPrice": 3200.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "O-OTHER",
+      "description": "Electricity April 2026"
+    },
+    {
+      "inventoryItemCode": "RENT PAID",
+      "quantity": 1,
+      "unitPrice": 12000.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "O-OTHER",
+      "description": "Office Rent April 2026"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - JOUXE ====================
+### Creates a PO for Hardware Inc. with Salary lines (zero-rated)
+POST {{host}}/api/JOUXE/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "VENC001",
+  "externalOrderNumber": "EXT-JX-001",
+  "purchaseRequisitionNumber": "PR-JX-001",
+  "invoiceDate": "2026-04-16",
+  "lines": [
+    {
+      "inventoryItemCode": "SALPAYE",
+      "quantity": 1,
+      "unitPrice": 15000.00,
+      "taxCode": "00",
+      "warehouseCode": "Expenses",
+      "projectCode": "O-OTHER",
+      "description": "PAYE April 2026"
+    },
+    {
+      "inventoryItemCode": "SALCTC",
+      "quantity": 1,
+      "unitPrice": 25000.00,
+      "taxCode": "00",
+      "warehouseCode": "Expenses",
+      "projectCode": "O-OTHER",
+      "description": "CTC April 2026"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - XFUELS (negative quantity rounding adjustment) ====================
+### Creates a PO for Vencor Holdings with a normal line and a negative quantity rounding adjustment
+POST {{host}}/api/XFUELS/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "VENC001",
+  "externalOrderNumber": "EXT-XF-002",
+  "purchaseRequisitionNumber": "PR-XF-002",
+  "invoiceDate": "2026-04-17",
+  "lines": [
+    {
+      "inventoryItemCode": "ADVERT",
+      "quantity": 10,
+      "unitPrice": 1500.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "S-BAUMANS",
+      "description": "Advertising - Monthly Batch"
+    },
+    {
+      "inventoryItemCode": "ADVERT",
+      "quantity": -1,
+      "unitPrice": 350.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "projectCode": "S-BAUMANS",
+      "description": "Advertising - Rounding Adjustment"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - TOBORA ====================
+### Creates a PO for Alpha Sand with Advertising & Accounting Fee lines
+POST {{host}}/api/TOBORA/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "ALP001",
+  "externalOrderNumber": "EXT-TB-001",
+  "purchaseRequisitionNumber": "PR-TB-001",
+  "invoiceDate": "2026-04-17",
+  "lines": [
+    {
+      "inventoryItemCode": "ZZ-ADVERTISING",
+      "quantity": 1,
+      "unitPrice": 4500.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "description": "Advertising April 2026"
+    },
+    {
+      "inventoryItemCode": "ZZ-ACCOUNTING FEE",
+      "quantity": 1,
+      "unitPrice": 8000.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "description": "Accounting Fee April 2026"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - TOBORA (mixed tax) ====================
+### Creates a PO for Naganang Stationary with a zero-rated salary line and a VAT entertainment line
+POST {{host}}/api/TOBORA/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "NAG001",
+  "externalOrderNumber": "EXT-TB-002",
+  "purchaseRequisitionNumber": "PR-TB-002",
+  "invoiceDate": "2026-04-17",
+  "lines": [
+    {
+      "inventoryItemCode": "SALCTC",
+      "quantity": 1,
+      "unitPrice": 20000.00,
+      "taxCode": "00",
+      "warehouseCode": "Expenses",
+      "description": "CTC April 2026"
+    },
+    {
+      "inventoryItemCode": "ZZ-ENTERTAINMENT",
+      "quantity": 1,
+      "unitPrice": 3500.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "description": "Client Entertainment April 2026"
+    }
+  ]
+}
+
+###
+
+### ==================== CREATE PO - TOBORA (negative quantity rounding adjustment) ====================
+### Creates a PO for CRD Glass with a normal line and a negative quantity rounding adjustment
+POST {{host}}/api/TOBORA/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "CRD001",
+  "externalOrderNumber": "EXT-TB-003",
+  "purchaseRequisitionNumber": "PR-TB-003",
+  "invoiceDate": "2026-04-17",
+  "lines": [
+    {
+      "inventoryItemCode": "ZZ-ADVERTISING",
+      "quantity": 5,
+      "unitPrice": 1200.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "description": "Advertising - Monthly Batch"
+    },
+    {
+      "inventoryItemCode": "ZZ-ADVERTISING",
+      "quantity": -1,
+      "unitPrice": 200.00,
+      "taxCode": "15",
+      "warehouseCode": "Expenses",
+      "description": "Advertising - Rounding Adjustment"
+    }
+  ]
+}
+
+###
+
+### ==================== GET PO DETAIL ====================
+### Replace PO_NUMBER_HERE with the actual PO number returned from Create
+
+### Get PO Detail - XFUELS
+GET {{host}}/api/XFUELS/PurchaseOrder/Detail/PO_NUMBER_HERE
+Accept: application/json
+
+###
+
+### Get PO Detail - TENELLA
+GET {{host}}/api/TENELLA/PurchaseOrder/Detail/PO_NUMBER_HERE
+Accept: application/json
+
+###
+
+### Get PO Detail - JOUXE
+GET {{host}}/api/JOUXE/PurchaseOrder/Detail/PO_NUMBER_HERE
+Accept: application/json
+
+###
+
+### Get PO Detail - TOBORA
+GET {{host}}/api/TOBORA/PurchaseOrder/Detail/PO_NUMBER_HERE
+Accept: application/json
+
+###
+
+### ==================== PROCESS PO (Full) - XFUELS ====================
+### Replace PO_NUMBER_HERE with actual PO number
+### Full processing - processes all remaining quantities
+POST {{host}}/api/XFUELS/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-XF-001",
+  "invoiceDate": "2026-04-16"
+}
+
+###
+
+### ==================== PROCESS PO (Partial) - TENELLA ====================
+### Replace PO_NUMBER_HERE with actual PO number
+### Partial processing - only process the Electricity line
+POST {{host}}/api/TENELLA/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-TN-001",
+  "invoiceDate": "2026-04-16",
+  "linesToProcess": [
+    {
+      "inventoryItemCode": "ELECTRICITY",
+      "quantityToProcess": 1
+    }
+  ]
+}
+
+###
+
+### ==================== PROCESS PO (Full) - JOUXE ====================
+### Replace PO_NUMBER_HERE with actual PO number
+POST {{host}}/api/JOUXE/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-JX-001",
+  "invoiceDate": "2026-04-16"
+}
+
+###
+
+### ==================== PROCESS PO (Full) - TOBORA ====================
+### Replace PO_NUMBER_HERE with actual PO number
+POST {{host}}/api/TOBORA/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-TB-001",
+  "invoiceDate": "2026-04-17"
+}
+
+###
+
+### ==================== PROCESS PO (Partial) - TOBORA ====================
+### Replace PO_NUMBER_HERE with actual PO number
+### Partial processing - only process the Salary CTC line
+POST {{host}}/api/TOBORA/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-TB-002",
+  "invoiceDate": "2026-04-17",
+  "linesToProcess": [
+    {
+      "inventoryItemCode": "SALCTC",
+      "quantityToProcess": 1
+    }
+  ]
+}
+
+###
+
+### ==================== VIEW CREATED POs AFTER PROCESSING ====================
+
+### Check POs - XFUELS (should show processed PO with invoice)
+GET {{host}}/api/XFUELS/ViewData/CreatedPurchaseOrders
+Accept: application/json
+
+###
+
+### Check POs - TENELLA (should show partially processed PO)
+GET {{host}}/api/TENELLA/ViewData/CreatedPurchaseOrders
+Accept: application/json
+
+###
+
+### Check specific PO invoices - replace PO_NUMBER_HERE
+GET {{host}}/api/TENELLA/ViewData/CreatedPurchaseOrders/PO_NUMBER_HERE
+Accept: application/json
+
+###
+
+### ==================== PROCESS REMAINING - TENELLA ====================
+### After partial processing above, process the remaining Rent line
+### Replace PO_NUMBER_HERE with actual PO number
+POST {{host}}/api/TENELLA/PurchaseOrder/PO_NUMBER_HERE/process
+Content-Type: application/json
+
+{
+  "supplierInvoiceNumber": "SINV-TN-002",
+  "invoiceDate": "2026-04-16",
+  "linesToProcess": [
+    {
+      "inventoryItemCode": "RENT PAID",
+      "quantityToProcess": 1
+    }
+  ]
+}
+
+###
+
+### ==================== DUPLICATE REQUISITION TEST ====================
+### This should FAIL because PR-XF-001 was already used above
+POST {{host}}/api/XFUELS/PurchaseOrder
+Content-Type: application/json
+
+{
+  "supplierCode": "VENC001",
+  "purchaseRequisitionNumber": "PR-XF-001",
+  "lines": [
+    {
+      "inventoryItemCode": "TESTING",
+      "quantity": 1,
+      "unitPrice": 1000.00,
+      "taxCode": "15"
+    }
+  ]
+}
 
 ###

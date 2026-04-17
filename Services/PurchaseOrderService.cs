@@ -18,34 +18,36 @@ namespace EvolutionApiGateway.Services
             _config = config.Value;
         }
 
-        private void InitEvolution()
+        private void InitEvolution(string company)
         {
+            string companyDatabase = _config.GetCompanyDatabase(company);
             SDK.DatabaseContext.CreateCommonDBConnection(
-                _config.Server,
+                _config.CommonServer ?? _config.Server,
                 _config.CommonDatabase,
-                _config.Username,
-                _config.Password,
+                _config.CommonUsername ?? _config.Username,
+                _config.CommonPassword ?? _config.Password,
                 false
             );
             SDK.DatabaseContext.SetLicense(_config.LicenseKey, _config.LicenseCode);
             SDK.DatabaseContext.CreateConnection(
                 _config.Server,
-                _config.CompanyDatabase,
+                companyDatabase,
                 _config.Username,
                 _config.Password,
                 false
             );
         }
 
-        private string GetConnectionString()
+        private string GetConnectionString(string company)
         {
-            return $"Server={_config.Server};Database={_config.CompanyDatabase};User Id={_config.Username};Password={_config.Password};Trusted_Connection=false;";
+            string companyDatabase = _config.GetCompanyDatabase(company);
+            return $"Server={_config.Server};Database={companyDatabase};User Id={_config.Username};Password={_config.Password};Trusted_Connection=false;";
         }
 
         /// <summary>
         /// Check if a Purchase Requisition Number already exists
         /// </summary>
-        private bool PurchaseRequisitionExists(string requisitionNumber)
+        private bool PurchaseRequisitionExists(string company, string requisitionNumber)
         {
             if (string.IsNullOrWhiteSpace(requisitionNumber))
                 return false;
@@ -58,7 +60,7 @@ namespace EvolutionApiGateway.Services
                 WHERE UserValue = @RequisitionNumber
             ";
 
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
                 using (var command = new SqlCommand(query, connection))
@@ -75,12 +77,12 @@ namespace EvolutionApiGateway.Services
         /// </summary>
         /// <param name="request">Purchase Order details</param>
         /// <returns>The generated PO Number</returns>
-        public string CreatePurchaseOrder(Local.PurchaseOrderRequest request)
+        public string CreatePurchaseOrder(string company, Local.PurchaseOrderRequest request)
         {
             // Check for duplicate Purchase Requisition Number
             if (!string.IsNullOrWhiteSpace(request.PurchaseRequisitionNumber))
             {
-                if (PurchaseRequisitionExists(request.PurchaseRequisitionNumber))
+                if (PurchaseRequisitionExists(company, request.PurchaseRequisitionNumber))
                 {
                     throw new InvalidOperationException(
                         $"Purchase Requisition Number '{request.PurchaseRequisitionNumber}' already exists. " +
@@ -89,7 +91,7 @@ namespace EvolutionApiGateway.Services
                 }
             }
 
-            InitEvolution();
+            InitEvolution(company);
 
             SDK.PurchaseOrder po = new SDK.PurchaseOrder();
             po.Supplier = new SDK.Supplier(request.SupplierCode);
@@ -173,9 +175,9 @@ namespace EvolutionApiGateway.Services
         /// Processes an existing Purchase Order into a Supplier Invoice
         /// Supports full or partial processing
         /// </summary>
-        public string ProcessPurchaseOrder(string poNumber, string supplierInvoiceNumber, DateTime? invoiceDate = null, List<Local.ProcessLine>? linesToProcess = null)
+        public string ProcessPurchaseOrder(string company, string poNumber, string supplierInvoiceNumber, DateTime? invoiceDate = null, List<Local.ProcessLine>? linesToProcess = null)
         {
-            InitEvolution();
+            InitEvolution(company);
 
             if (string.IsNullOrWhiteSpace(poNumber))
                 throw new ArgumentException("Purchase Order number cannot be empty", nameof(poNumber));
@@ -191,16 +193,22 @@ namespace EvolutionApiGateway.Services
             po.InvoiceDate = invoiceDate ?? DateTime.Now;
 
             // Get actual remaining quantities from database (accounts for previous partial processing)
-            var remainingQuantities = GetRemainingQuantities(po);
+            // Returns a list ordered by line ID to match SDK detail line order
+            var remainingQuantities = GetRemainingQuantities(company, po);
 
             // If partial processing requested, set specific quantities on each line
             if (linesToProcess != null && linesToProcess.Count > 0)
             {
+                int lineIndex = 0;
                 foreach (SDK.OrderDetail detail in po.Detail)
                 {
                     string itemCode = detail.InventoryItem?.Code ?? "";
-                    string projectCode = detail.Project?.Code ?? "";
                     
+                    // Get actual remaining quantity for this specific line by index
+                    double actualRemaining = lineIndex < remainingQuantities.Count
+                        ? remainingQuantities[lineIndex].RemainingQty
+                        : 0;
+
                     // Find matching line to process
                     var lineToProcess = linesToProcess.FirstOrDefault(
                         l => l.InventoryItemCode?.Equals(itemCode, StringComparison.OrdinalIgnoreCase) == true
@@ -208,13 +216,6 @@ namespace EvolutionApiGateway.Services
 
                     if (lineToProcess != null)
                     {
-                        // Get actual remaining quantity from database using composite key
-                        // Normalize to uppercase for consistent matching
-                        string key = $"{itemCode.ToUpperInvariant()}|{projectCode.ToUpperInvariant()}";
-                        double actualRemaining = remainingQuantities.ContainsKey(key) 
-                            ? remainingQuantities[key] 
-                            : 0;
-
                         // Validate quantity
                         if (lineToProcess.QuantityToProcess > actualRemaining)
                         {
@@ -232,24 +233,22 @@ namespace EvolutionApiGateway.Services
                         // Line not specified in partial processing - set to 0 (don't process)
                         detail.ToProcess = 0;
                     }
+                    lineIndex++;
                 }
             }
             else
             {
-                // Full processing - set ToProcess to actual remaining quantities
+                // Full processing - set ToProcess to actual remaining quantities per line
+                // Match by index since multiple lines can share the same item code + project
+                int lineIndex = 0;
                 foreach (SDK.OrderDetail detail in po.Detail)
                 {
-                    string itemCode = detail.InventoryItem?.Code ?? "";
-                    string projectCode = detail.Project?.Code ?? "";
-                    
-                    // Use composite key to handle duplicate items on different projects
-                    // Normalize to uppercase for consistent matching
-                    string key = $"{itemCode.ToUpperInvariant()}|{projectCode.ToUpperInvariant()}";
-                    double actualRemaining = remainingQuantities.ContainsKey(key) 
-                        ? remainingQuantities[key] 
+                    double actualRemaining = lineIndex < remainingQuantities.Count
+                        ? remainingQuantities[lineIndex].RemainingQty
                         : 0;
                     
                     detail.ToProcess = actualRemaining;
+                    lineIndex++;
                 }
             }
 
@@ -266,13 +265,15 @@ namespace EvolutionApiGateway.Services
         /// Calculates remaining quantities for each line from the SDK PO object
         /// The SDK automatically loads the current version with updated fQtyProcessed values
         /// However, we need to query the database because SDK's ToProcess gets reset to 0
+        /// Returns a list ordered by line ID to match SDK detail line order
         /// </summary>
-        private Dictionary<string, double> GetRemainingQuantities(SDK.PurchaseOrder po)
+        private List<(string ItemCode, string ProjectCode, double RemainingQty)> GetRemainingQuantities(string company, SDK.PurchaseOrder po)
         {
-            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<(string ItemCode, string ProjectCode, double RemainingQty)>();
 
             // Query to get actual remaining quantities from PO lines
             // Use iLineProjectID to get project (not iJobID)
+            // Ordered by idInvoiceLines to match SDK detail line order
             string query = @"
                 SELECT 
                     S.cSimpleCode AS ItemCode,
@@ -291,7 +292,7 @@ namespace EvolutionApiGateway.Services
                 ORDER BY L.idInvoiceLines
             ";
 
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
                 using (var command = new SqlCommand(query, connection))
@@ -308,10 +309,7 @@ namespace EvolutionApiGateway.Services
                                 ? Convert.ToDouble(reader["RemainingQty"]) 
                                 : 0;
                             
-                            // Use composite key: ItemCode|ProjectCode to handle duplicate items
-                            // Normalize to uppercase for consistent matching
-                            string key = $"{itemCode.ToUpperInvariant()}|{projectCode.ToUpperInvariant()}";
-                            result[key] = remainingQty;
+                            result.Add((itemCode, projectCode, remainingQty));
                         }
                     }
                 }
@@ -324,7 +322,7 @@ namespace EvolutionApiGateway.Services
         /// Gets details of an existing Purchase Order by querying the database directly
         /// Only returns POs that have a purchase requisition number
         /// </summary>
-        public object GetPurchaseOrder(string poNumber)
+        public object GetPurchaseOrder(string company, string poNumber)
         {
             // First, find the AutoIndex of the ORIGINAL PO (the one with the requisition number)
             // Match the _uvReqCreatedPO view logic exactly
@@ -340,7 +338,7 @@ namespace EvolutionApiGateway.Services
             ";
 
             int poAutoIndex;
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
                 using (var cmd = new SqlCommand(getAutoIndexQuery, connection))
@@ -393,7 +391,7 @@ namespace EvolutionApiGateway.Services
                 ORDER BY L.idInvoiceLines
             ";
 
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
 

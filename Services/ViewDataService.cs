@@ -22,25 +22,26 @@ namespace EvolutionApiGateway.Services
         /// <summary>
         /// Builds the connection string from the Evolution config
         /// </summary>
-        private string GetConnectionString()
+        private string GetConnectionString(string company)
         {
-            return $"Server={_config.Server};Database={_config.CompanyDatabase};User Id={_config.Username};Password={_config.Password};Trusted_Connection=false;";
+            string companyDatabase = _config.GetCompanyDatabase(company);
+            return $"Server={_config.Server};Database={companyDatabase};User Id={_config.Username};Password={_config.Password};Trusted_Connection=false;";
         }
 
         /// <summary>
         /// Returns all available expense stock items from [_uvReqExpenseStockItems]
         /// </summary>
-        public List<Dictionary<string, object?>> GetExpenseStockItems()
+        public List<Dictionary<string, object?>> GetExpenseStockItems(string company)
         {
-            return ExecuteViewQuery("SELECT * FROM [_uvReqExpenseStockItems] ORDER BY 1");
+            return ExecuteViewQuery(company, "SELECT * FROM [_uvReqExpenseStockItems] ORDER BY 1");
         }
 
         /// <summary>
         /// Returns all available trade suppliers from [_uvReqTradeSuppliers]
         /// </summary>
-        public List<Dictionary<string, object?>> GetTradeSuppliers()
+        public List<Dictionary<string, object?>> GetTradeSuppliers(string company)
         {
-            return ExecuteViewQuery("SELECT * FROM [_uvReqTradeSuppliers] ORDER BY 1");
+            return ExecuteViewQuery(company, "SELECT * FROM [_uvReqTradeSuppliers] ORDER BY 1");
         }
 
         /// <summary>
@@ -48,16 +49,16 @@ namespace EvolutionApiGateway.Services
         /// Includes: ReqNumber, PONumber, InvoiceNumber, OrderStatus
         /// Note: A PO with multiple invoices will appear as multiple rows
         /// </summary>
-        public List<Dictionary<string, object?>> GetCreatedPurchaseOrders()
+        public List<Dictionary<string, object?>> GetCreatedPurchaseOrders(string company)
         {
-            return ExecuteViewQuery("SELECT * FROM [_uvReqCreatedPO] ORDER BY PONumber DESC");
+            return ExecuteViewQuery(company, "SELECT * FROM [_uvReqCreatedPO] ORDER BY PONumber DESC");
         }
 
         /// <summary>
         /// Returns all invoices for a specific PO from [_uvReqCreatedPO] view
         /// Filters by PO number to show all supplier invoices for that PO
         /// </summary>
-        public List<Dictionary<string, object?>> GetCreatedPurchaseOrdersByPoNumber(string poNumber)
+        public List<Dictionary<string, object?>> GetCreatedPurchaseOrdersByPoNumber(string company, string poNumber)
         {
             string query = @"
                 SELECT * 
@@ -68,7 +69,7 @@ namespace EvolutionApiGateway.Services
 
             var results = new List<Dictionary<string, object?>>();
 
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
 
@@ -107,20 +108,20 @@ namespace EvolutionApiGateway.Services
         /// <summary>
         /// Returns all active projects from [_uvReqProjects]
         /// </summary>
-        public List<Dictionary<string, object?>> GetProjects()
+        public List<Dictionary<string, object?>> GetProjects(string company)
         {
-            return ExecuteViewQuery("SELECT * FROM [_uvReqProjects] ORDER BY ProjectCode");
+            return ExecuteViewQuery(company, "SELECT * FROM [_uvReqProjects] ORDER BY ProjectCode");
         }
 
         /// <summary>
         /// Generic method to execute a SELECT query against a view and return results as a list of dictionaries.
         /// Each dictionary represents a row, with column names as keys.
         /// </summary>
-        private List<Dictionary<string, object?>> ExecuteViewQuery(string query)
+        private List<Dictionary<string, object?>> ExecuteViewQuery(string company, string query)
         {
-            var results = new List<Dictionary<string, object?>>();
+            var results = new List<Dictionary<string, object?>>(); 
 
-            using (var connection = new SqlConnection(GetConnectionString()))
+            using (var connection = new SqlConnection(GetConnectionString(company)))
             {
                 connection.Open();
 

@@ -6,7 +6,7 @@ using System.Net;
 namespace EvolutionApiGateway.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/{company}/[controller]")]
     public class PurchaseOrderController : ControllerBase
     {
         private readonly PurchaseOrderService _poService;
@@ -22,14 +22,15 @@ namespace EvolutionApiGateway.Controllers
         /// <param name="request">Purchase Order details</param>
         /// <returns>Created PO number</returns>
         [HttpPost]
-        public IActionResult Create([FromBody] PurchaseOrderRequest request)
+        public IActionResult Create(string company, [FromBody] PurchaseOrderRequest request)
         {
             try
             {
-                string poNumber = _poService.CreatePurchaseOrder(request);
+                string poNumber = _poService.CreatePurchaseOrder(company, request);
                 
                 return Ok(new
                 {
+                    Company = company,
                     Message = "Purchase Order created successfully",
                     PONumber = poNumber
                 });
@@ -59,11 +60,11 @@ namespace EvolutionApiGateway.Controllers
         /// <param name="poNumber">The PO number to retrieve</param>
         /// <returns>PO details</returns>
         [HttpGet("Detail/{poNumber}")]
-        public IActionResult Get(string poNumber)
+        public IActionResult Get(string company, string poNumber)
         {
             try
             {
-                var poDetails = _poService.GetPurchaseOrder(poNumber);
+                var poDetails = _poService.GetPurchaseOrder(company, poNumber);
                 return Ok(poDetails);
             }
             catch (InvalidOperationException invEx)
@@ -92,11 +93,12 @@ namespace EvolutionApiGateway.Controllers
         /// <param name="request">Supplier Invoice details with optional line-level quantities and date</param>
         /// <returns>Generated Supplier Invoice number</returns>
         [HttpPost("{poNumber}/process")]
-        public IActionResult Process(string poNumber, [FromBody] ProcessPurchaseOrderRequest request)
+        public IActionResult Process(string company, string poNumber, [FromBody] ProcessPurchaseOrderRequest request)
         {
             try
             {
                 string invoiceNumber = _poService.ProcessPurchaseOrder(
+                    company,
                     poNumber, 
                     request.SupplierInvoiceNumber,
                     request.InvoiceDate,
@@ -105,6 +107,7 @@ namespace EvolutionApiGateway.Controllers
                 
                 return Ok(new
                 {
+                    Company = company,
                     Message = "Purchase Order processed successfully",
                     PONumber = poNumber,
                     InvoiceNumber = invoiceNumber

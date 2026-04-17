@@ -5,7 +5,7 @@ using System.Net;
 namespace EvolutionApiGateway.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/{company}/[controller]")]
     public class ViewDataController : ControllerBase
     {
         private readonly ViewDataService _viewDataService;
@@ -19,11 +19,11 @@ namespace EvolutionApiGateway.Controllers
         /// Returns all available expense stock items
         /// </summary>
         [HttpGet("ExpenseStockItems")]
-        public IActionResult GetExpenseStockItems()
+        public IActionResult GetExpenseStockItems(string company)
         {
             try
             {
-                var items = _viewDataService.GetExpenseStockItems();
+                var items = _viewDataService.GetExpenseStockItems(company);
                 return Ok(items);
             }
             catch (Exception ex)
@@ -40,11 +40,11 @@ namespace EvolutionApiGateway.Controllers
         /// Returns all available trade suppliers
         /// </summary>
         [HttpGet("TradeSuppliers")]
-        public IActionResult GetTradeSuppliers()
+        public IActionResult GetTradeSuppliers(string company)
         {
             try
             {
-                var suppliers = _viewDataService.GetTradeSuppliers();
+                var suppliers = _viewDataService.GetTradeSuppliers(company);
                 return Ok(suppliers);
             }
             catch (Exception ex)
@@ -61,11 +61,11 @@ namespace EvolutionApiGateway.Controllers
         /// Returns all created Purchase Orders and their status
         /// </summary>
         [HttpGet("CreatedPurchaseOrders")]
-        public IActionResult GetCreatedPurchaseOrders()
+        public IActionResult GetCreatedPurchaseOrders(string company)
         {
             try
             {
-                var purchaseOrders = _viewDataService.GetCreatedPurchaseOrders();
+                var purchaseOrders = _viewDataService.GetCreatedPurchaseOrders(company);
                 return Ok(purchaseOrders);
             }
             catch (Exception ex)
@@ -83,11 +83,11 @@ namespace EvolutionApiGateway.Controllers
         /// </summary>
         /// <param name="poNumber">The PO number to filter by</param>
         [HttpGet("CreatedPurchaseOrders/{poNumber}")]
-        public IActionResult GetCreatedPurchaseOrdersByPoNumber(string poNumber)
+        public IActionResult GetCreatedPurchaseOrdersByPoNumber(string company, string poNumber)
         {
             try
             {
-                var purchaseOrders = _viewDataService.GetCreatedPurchaseOrdersByPoNumber(poNumber);
+                var purchaseOrders = _viewDataService.GetCreatedPurchaseOrdersByPoNumber(company, poNumber);
                 return Ok(purchaseOrders);
             }
             catch (Exception ex)
@@ -104,11 +104,11 @@ namespace EvolutionApiGateway.Controllers
         /// Returns all active projects
         /// </summary>
         [HttpGet("Projects")]
-        public IActionResult GetProjects()
+        public IActionResult GetProjects(string company)
         {
             try
             {
-                var projects = _viewDataService.GetProjects();
+                var projects = _viewDataService.GetProjects(company);
                 return Ok(projects);
             }
             catch (Exception ex)
