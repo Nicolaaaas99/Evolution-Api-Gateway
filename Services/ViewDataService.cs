@@ -114,6 +114,15 @@ namespace EvolutionApiGateway.Services
         }
 
         /// <summary>
+        /// Returns outstanding supplier invoices from [_uvReqOutstandingInvoices].
+        /// Use these AutoIdx values when allocating supplier payments.
+        /// </summary>
+        public List<Dictionary<string, object?>> GetOutstandingInvoices(string company)
+        {
+            return ExecuteViewQuery(company, "SELECT * FROM [_uvReqOutstandingInvoices]");
+        }
+
+        /// <summary>
         /// Generic method to execute a SELECT query against a view and return results as a list of dictionaries.
         /// Each dictionary represents a row, with column names as keys.
         /// </summary>

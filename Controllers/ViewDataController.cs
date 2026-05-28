@@ -120,5 +120,27 @@ namespace EvolutionApiGateway.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Returns outstanding supplier invoices.
+        /// AutoIdx from this list is what you pass into SupplierPayment.allocations.
+        /// </summary>
+        [HttpGet("OutstandingInvoices")]
+        public IActionResult GetOutstandingInvoices(string company)
+        {
+            try
+            {
+                var invoices = _viewDataService.GetOutstandingInvoices(company);
+                return Ok(invoices);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError, new
+                {
+                    Error = "Failed to retrieve outstanding invoices",
+                    Detail = ex.Message
+                });
+            }
+        }
     }
 }

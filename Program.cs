@@ -14,6 +14,7 @@ builder.Services.Configure<EvolutionConfig>(
 // Register your services
 builder.Services.AddScoped<PurchaseOrderService>();
 builder.Services.AddScoped<ViewDataService>();
+builder.Services.AddScoped<SupplierPaymentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
